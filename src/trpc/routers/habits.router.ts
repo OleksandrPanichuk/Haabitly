@@ -7,7 +7,7 @@ import {
   deleteManyHabitsSchema,
   listHabitsSchema,
   updateHabitSchema,
-} from "@/schemas/habits.schemas";
+} from "@/schemas";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 
 export const habitsRouter = createTRPCRouter({
