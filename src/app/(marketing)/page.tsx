@@ -1,11 +1,4 @@
-import {
-  Features,
-  Footer,
-  Header,
-  Hero,
-  HowItWorks,
-  Pricing,
-} from "@/features/marketing";
+import {Features, Footer, Header, Hero, HowItWorks, Pricing,} from "@/features/marketing/components";
 
 export default function MarketingPage() {
   return (

@@ -1,17 +1,24 @@
-import {relations} from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import {
-    boolean,
-    date,
-    index,
-    integer,
-    jsonb,
-    pgEnum,
-    pgTable,
-    text,
-    timestamp,
-    uuid,
-    varchar,
+  boolean,
+  date,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
+
+export const frequencyTypeEnum = pgEnum("frequency_type", [
+  "daily",
+  "weekly",
+  "custom",
+]);
+export const frequencyUnitEnum = pgEnum("frequency_unit", ["days", "weeks"]);
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
@@ -85,12 +92,6 @@ export const verifications = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
-export const frequencyEnum = pgEnum("habit_frequency", [
-  "daily",
-  "weekly",
-  "custom",
-]);
-
 export const habits = pgTable(
   "habits",
   {
@@ -100,19 +101,16 @@ export const habits = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 50 }).notNull(),
     description: text("description"),
-    frequency: frequencyEnum("frequency").notNull().default("daily"),
-    frequencyData: jsonb("frequency_data").$type<
-      | { type: "daily" }
-      | { type: "weekly"; daysOfWeek: number[] }
-      | { type: "custom"; interval: number; unit: "days" | "weeks" }
-      | null
-    >(),
+
+    frequencyType: frequencyTypeEnum("frequency_type")
+      .notNull()
+      .default("daily"),
+    frequencyDaysOfWeek: integer("frequency_days_of_week").array(),
+    frequencyInterval: integer("frequency_interval"),
+    frequencyUnit: frequencyUnitEnum("frequency_unit"),
+
     color: varchar("color", { length: 7 }).notNull().default("#3b82f6"),
-    archived: boolean("archived").default(false).notNull(),
-    targetStreak: integer("target_streak"),
-    currentStreak: integer("current_streak").default(0).notNull(),
-    longestStreak: integer("longest_streak").default(0).notNull(),
-    lastCompletedAt: date("last_completed_at"),
+
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -122,8 +120,6 @@ export const habits = pgTable(
   (table) => [index("habit_userId_idx").on(table.userId)],
 );
 
-export type THabit = typeof habits.$inferSelect;
-
 export const completions = pgTable(
   "completions",
   {
@@ -131,7 +127,7 @@ export const completions = pgTable(
     habitId: uuid("habit_id")
       .notNull()
       .references(() => habits.id, { onDelete: "cascade" }),
-    date: date("date").notNull(),
+    date: date("date", { mode: "date" }).notNull(),
     note: text("note"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -142,14 +138,14 @@ export const completions = pgTable(
   (table) => [
     index("completion_habitId_idx").on(table.habitId),
     index("completion_date_idx").on(table.date),
+    uniqueIndex("completion_habitId_date_uidx").on(table.habitId, table.date),
   ],
 );
-
-export type TCompletion = typeof completions.$inferSelect;
 
 export const userRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),
+  habits: many(habits),
 }));
 
 export const sessionRelations = relations(sessions, ({ one }) => ({
@@ -180,3 +176,10 @@ export const completionRelations = relations(completions, ({ one }) => ({
     references: [habits.id],
   }),
 }));
+
+export type THabit = typeof habits.$inferSelect;
+export type TCompletion = typeof completions.$inferSelect;
+export type TUser = typeof users.$inferSelect;
+export type TSession = typeof sessions.$inferSelect;
+export type TAccount = typeof accounts.$inferSelect;
+export type TVerification = typeof verifications.$inferSelect;
