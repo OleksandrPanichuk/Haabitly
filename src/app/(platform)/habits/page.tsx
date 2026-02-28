@@ -1,21 +1,32 @@
-
 import { HabitsView } from "@/features/habits";
 import { getQueryClient, HydrateClient, trpc } from "@/trpc/server";
 
-const Page = () => {
-  const queryClient = getQueryClient();
+const Page = async () => {
+    const queryClient = getQueryClient();
+    const now = new Date();
+    const date = new Date(
+        Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()),
+    );
 
-  void queryClient.prefetchInfiniteQuery(
-    trpc.habits.getTodayHabits.infiniteQueryOptions(),
-  );
+    const streakStart = new Date(
+        Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() - 90),
+    );
 
-  return (
-    <HydrateClient>
-      <div>
-        <HabitsView />
-      </div>
-    </HydrateClient>
-  );
+    await Promise.all([
+        queryClient.prefetchQuery(trpc.habits.list.queryOptions({ date })),
+        queryClient.prefetchQuery(
+            trpc.completions.getByDateRange.queryOptions({
+                startDate: streakStart,
+                endDate: date,
+            }),
+        ),
+    ]);
+
+    return (
+        <HydrateClient>
+            <HabitsView date={date.toISOString()} />
+        </HydrateClient>
+    );
 };
 
 export default Page;

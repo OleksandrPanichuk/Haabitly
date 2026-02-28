@@ -1,18 +1,24 @@
 import z from "zod";
 
 export const getCompletionsByDateRangeSchema = z
-  .object({
-    habitId: z.uuid().optional(),
-    startDate: z.date(),
-    endDate: z.date(),
-  })
-  .refine((data) => data.startDate <= data.endDate, {
-    message: "Start date must be before or equal to end date",
-    path: ["endDate"],
-  });
+    .object({
+        habitId: z.uuid().optional(),
+        startDate: z.date(),
+        endDate: z.date(),
+    })
+    .refine((data) => data.startDate <= data.endDate, {
+        message: "Start date must be before or equal to end date",
+        path: ["endDate"],
+    });
 
 export const toggleCompletionSchema = z.object({
-  habitId: z.uuid(),
-  date: z.date(),
-  note: z.string().max(500).optional(),
+    habitId: z.uuid(),
+    date: z.date(),
+    note: z.string().max(500).optional(),
+});
+
+export const updateCompletionNoteSchema = z.object({
+    habitId: z.uuid(),
+    date: z.date(),
+    note: z.string().max(500).nullable(),
 });
