@@ -13,7 +13,9 @@ const Page = async () => {
     );
 
     await Promise.all([
-        queryClient.prefetchQuery(trpc.habits.list.queryOptions({ date })),
+        queryClient.prefetchQuery(
+            trpc.habits.list.queryOptions({ date, includeArchived: false }),
+        ),
         queryClient.prefetchQuery(
             trpc.completions.getByDateRange.queryOptions({
                 startDate: streakStart,

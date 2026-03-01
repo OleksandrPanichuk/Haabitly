@@ -1,3 +1,5 @@
+export * from "./ArchivedHabitItem";
+export * from "./ExportButton";
 export * from "./HabitDeleteDialog";
 export * from "./HabitDialog";
 export * from "./HabitItem";
@@ -5,4 +7,5 @@ export * from "./HabitStatsModal";
 export * from "./HabitsHeader";
 export * from "./HabitsList";
 export * from "./HabitsView";
+export * from "./HabitTemplatesDialog";
 export * from "./NoteDialog";

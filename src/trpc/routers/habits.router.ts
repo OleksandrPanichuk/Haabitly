@@ -1,9 +1,19 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq, getTableColumns, inArray } from "drizzle-orm";
+import {
+    and,
+    asc,
+    eq,
+    getTableColumns,
+    inArray,
+    isNotNull,
+    isNull,
+} from "drizzle-orm";
 import { completions, habits } from "@/db/schema";
 import {
+    archiveHabitSchema,
     deleteHabitSchema,
     deleteManyHabitsSchema,
+    exportHabitsSchema,
     habitUpdateSchema,
     habitValuesSchema,
     listHabitsSchema,
@@ -28,7 +38,17 @@ export const habitsRouter = createTRPCRouter({
                         eq(completions.date, input.date),
                     ),
                 )
-                .where(eq(habits.userId, ctx.user.id))
+                .where(
+                    and(
+                        eq(habits.userId, ctx.user.id),
+                        input.includeArchived
+                            ? isNotNull(habits.archivedAt)
+                            : isNull(habits.archivedAt),
+                        input.category
+                            ? eq(habits.category, input.category)
+                            : undefined,
+                    ),
+                )
                 .orderBy(asc(habits.createdAt));
 
             const dayOfWeek = input.date.getDay();
@@ -70,6 +90,30 @@ export const habitsRouter = createTRPCRouter({
                 }
             });
         }),
+
+    listAll: protectedProcedure.query(async ({ ctx }) => {
+        return ctx.db
+            .select()
+            .from(habits)
+            .where(
+                and(eq(habits.userId, ctx.user.id), isNull(habits.archivedAt)),
+            )
+            .orderBy(asc(habits.createdAt));
+    }),
+
+    listArchived: protectedProcedure.query(async ({ ctx }) => {
+        return ctx.db
+            .select()
+            .from(habits)
+            .where(
+                and(
+                    eq(habits.userId, ctx.user.id),
+                    isNotNull(habits.archivedAt),
+                ),
+            )
+            .orderBy(asc(habits.createdAt));
+    }),
+
     create: protectedProcedure
         .input(habitValuesSchema)
         .mutation(async ({ ctx, input }) => {
@@ -93,10 +137,13 @@ export const habitsRouter = createTRPCRouter({
                             ? input.frequencyUnit
                             : null,
                     color: input.color,
+                    icon: input.icon ?? null,
+                    category: input.category ?? "other",
                 })
                 .returning();
             return habit;
         }),
+
     update: protectedProcedure
         .input(habitUpdateSchema)
         .mutation(async ({ ctx, input }) => {
@@ -108,6 +155,8 @@ export const habitsRouter = createTRPCRouter({
                     name: values.name,
                     description: values.description,
                     color: values.color,
+                    icon: values.icon ?? null,
+                    category: values.category ?? "other",
                     frequencyType: values.frequencyType,
                     frequencyDaysOfWeek:
                         values.frequencyType === "weekly"
@@ -127,6 +176,33 @@ export const habitsRouter = createTRPCRouter({
 
             return updated;
         }),
+
+    archive: protectedProcedure
+        .input(archiveHabitSchema)
+        .mutation(async ({ ctx, input }) => {
+            const [updated] = await ctx.db
+                .update(habits)
+                .set({
+                    archivedAt: input.archive ? new Date() : null,
+                })
+                .where(
+                    and(
+                        eq(habits.id, input.id),
+                        eq(habits.userId, ctx.user.id),
+                    ),
+                )
+                .returning();
+
+            if (!updated) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: "Habit not found",
+                });
+            }
+
+            return updated;
+        }),
+
     delete: protectedProcedure
         .input(deleteHabitSchema)
         .mutation(async ({ ctx, input }) => {
@@ -149,6 +225,7 @@ export const habitsRouter = createTRPCRouter({
 
             return deleted;
         }),
+
     deleteMany: protectedProcedure
         .input(deleteManyHabitsSchema)
         .mutation(async ({ ctx, input }) => {
@@ -160,5 +237,41 @@ export const habitsRouter = createTRPCRouter({
                         eq(habits.userId, ctx.user.id),
                     ),
                 );
+        }),
+
+    exportData: protectedProcedure
+        .input(exportHabitsSchema)
+        .query(async ({ ctx, input }) => {
+            const { gte, lte } = await import("drizzle-orm");
+
+            const userHabits = await ctx.db
+                .select()
+                .from(habits)
+                .where(eq(habits.userId, ctx.user.id))
+                .orderBy(asc(habits.createdAt));
+
+            const habitCompletions = await ctx.db
+                .select({
+                    ...getTableColumns(completions),
+                    habitName: habits.name,
+                    habitColor: habits.color,
+                    habitCategory: habits.category,
+                })
+                .from(completions)
+                .innerJoin(habits, eq(habits.id, completions.habitId))
+                .where(
+                    and(
+                        eq(habits.userId, ctx.user.id),
+                        gte(completions.date, input.startDate),
+                        lte(completions.date, input.endDate),
+                    ),
+                )
+                .orderBy(asc(completions.date));
+
+            return {
+                habits: userHabits,
+                completions: habitCompletions,
+                exportedAt: new Date(),
+            };
         }),
 });

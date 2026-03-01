@@ -1,10 +1,26 @@
 import z from "zod";
 
+export const HABIT_CATEGORIES = [
+    "health",
+    "fitness",
+    "learning",
+    "mindfulness",
+    "productivity",
+    "social",
+    "finance",
+    "creativity",
+    "other",
+] as const;
+
+export type THabitCategory = (typeof HABIT_CATEGORIES)[number];
+
 export const listHabitsSchema = z.object({
     date: z
         .date()
         .optional()
         .default(() => new Date()),
+    category: z.enum(HABIT_CATEGORIES).optional(),
+    includeArchived: z.boolean().optional().default(false),
 });
 
 export const habitValuesSchema = z
@@ -15,6 +31,8 @@ export const habitValuesSchema = z
             .string()
             .regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color")
             .default("#3b82f6"),
+        icon: z.string().max(10).optional(),
+        category: z.enum(HABIT_CATEGORIES).optional().default("other"),
         frequencyType: z.enum(["daily", "weekly", "custom"]),
         frequencyDaysOfWeek: z.array(z.number().int().min(0).max(6)).optional(),
         frequencyInterval: z
@@ -73,4 +91,14 @@ export const deleteHabitSchema = z.object({
 
 export const deleteManyHabitsSchema = z.object({
     ids: z.array(z.uuid()).min(1, "Select at least one habit to delete"),
+});
+
+export const archiveHabitSchema = z.object({
+    id: z.uuid(),
+    archive: z.boolean(),
+});
+
+export const exportHabitsSchema = z.object({
+    startDate: z.date(),
+    endDate: z.date(),
 });

@@ -4,18 +4,23 @@ import { Button, Chip, Tooltip } from "@heroui/react";
 import { format, isToday, isYesterday } from "date-fns";
 import { motion } from "framer-motion";
 import {
+    BarChart2Icon,
     ChevronLeftIcon,
     ChevronRightIcon,
+    LayoutTemplateIcon,
     PlusIcon,
     SparklesIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface IHabitsHeaderProps {
     date: Date;
     onDateChange: (date: Date) => void;
     onCreateHabit: () => void;
+    onOpenTemplates: () => void;
     totalHabits: number;
     completedHabits: number;
+    showArchived?: boolean;
 }
 
 function formatDateLabel(date: Date): string {
@@ -38,9 +43,12 @@ export const HabitsHeader = ({
     date,
     onDateChange,
     onCreateHabit,
+    onOpenTemplates,
     totalHabits,
     completedHabits,
+    showArchived = false,
 }: IHabitsHeaderProps) => {
+    const router = useRouter();
     const progress =
         totalHabits > 0 ? Math.round((completedHabits / totalHabits) * 100) : 0;
     const dateLabel = formatDateLabel(date);
@@ -63,7 +71,7 @@ export const HabitsHeader = ({
 
     return (
         <div className="space-y-5">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3 md:flex-row flex-col">
                 <div className="flex items-center gap-2">
                     <Tooltip content="Previous day" placement="bottom">
                         <Button
@@ -77,7 +85,7 @@ export const HabitsHeader = ({
                         </Button>
                     </Tooltip>
 
-                    <div className="flex flex-col items-center w-36">
+                    <div className="flex flex-col items-center w-48">
                         <motion.h2
                             key={date.toDateString()}
                             initial={{ opacity: 0, y: -6 }}
@@ -118,17 +126,47 @@ export const HabitsHeader = ({
                     )}
                 </div>
 
-                <Button
-                    color="primary"
-                    startContent={<PlusIcon size={16} />}
-                    onPress={onCreateHabit}
-                    className="font-semibold shadow-lg shadow-primary/25"
-                >
-                    New Habit
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Tooltip content="Analytics" placement="bottom" delay={400}>
+                        <Button
+                            isIconOnly
+                            variant="flat"
+                            size="sm"
+                            onPress={() => router.push("/analytics")}
+                            className="text-foreground-400 hover:text-foreground"
+                            aria-label="Analytics"
+                        >
+                            <BarChart2Icon size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip
+                        content="Browse templates"
+                        placement="bottom"
+                        delay={400}
+                    >
+                        <Button
+                            isIconOnly
+                            variant="flat"
+                            size="sm"
+                            onPress={onOpenTemplates}
+                            className="text-foreground-400 hover:text-foreground"
+                            aria-label="Habit templates"
+                        >
+                            <LayoutTemplateIcon size={16} />
+                        </Button>
+                    </Tooltip>
+                    <Button
+                        color="primary"
+                        startContent={<PlusIcon size={16} />}
+                        onPress={onCreateHabit}
+                        className="font-semibold shadow-lg shadow-primary/25"
+                    >
+                        New Habit
+                    </Button>
+                </div>
             </div>
 
-            {totalHabits > 0 && (
+            {totalHabits > 0 && !showArchived && (
                 <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}

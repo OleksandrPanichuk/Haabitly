@@ -1,19 +1,13 @@
-import { db } from "@/db";
-import { auth } from "@/lib/auth";
-import { isServer } from "@tanstack/react-query";
 import { initTRPC, TRPCError } from "@trpc/server";
+import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import { headers } from "next/headers";
 import { cache } from "react";
 import superjson from "superjson";
+import { db } from "@/db";
+import { auth } from "@/lib/auth";
 
-type CreateTRPCContextOptions = {
-    headers?: Headers;
-    req?: Request;
-};
-
-const createTRPCContextInner = async (opts?: CreateTRPCContextOptions) => {
-    const requestHeaders =
-        opts?.headers ?? opts?.req?.headers ?? (await headers());
+const createTRPCContextInner = async (opts?: FetchCreateContextFnOptions) => {
+    const requestHeaders = opts?.req?.headers ?? (await headers());
 
     const normalizedHeaders = new Headers(requestHeaders);
 
@@ -27,7 +21,7 @@ const createTRPCContextInner = async (opts?: CreateTRPCContextOptions) => {
     };
 };
 
-export const createTRPCContext = async (opts?: CreateTRPCContextOptions) =>
+export const createTRPCContext = async (opts?: FetchCreateContextFnOptions) =>
     createTRPCContextInner(opts);
 
 export const createTRPCContextForRSC = cache(async () =>

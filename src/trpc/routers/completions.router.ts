@@ -81,7 +81,6 @@ export const completionsRouter = createTRPCRouter({
     updateNote: protectedProcedure
         .input(updateCompletionNoteSchema)
         .mutation(async ({ ctx, input }) => {
-            // Verify the habit belongs to the user
             const [habit] = await ctx.db
                 .select({ id: habits.id })
                 .from(habits)

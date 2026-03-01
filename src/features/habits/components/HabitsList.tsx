@@ -2,8 +2,14 @@
 
 import { Button } from "@heroui/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarCheckIcon, PlusIcon, SparklesIcon } from "lucide-react";
+import {
+    ArchiveIcon,
+    CalendarCheckIcon,
+    PlusIcon,
+    SparklesIcon,
+} from "lucide-react";
 import type { THabitWithStatus } from "@/types";
+import { ArchivedHabitItem } from "./ArchivedHabitItem";
 import { HabitItem } from "./HabitItem";
 
 interface IHabitsListProps {
@@ -11,10 +17,14 @@ interface IHabitsListProps {
     date: Date;
     streaks: Record<string, number>;
     tab: "ALL" | "COMPLETED" | "INCOMPLETE";
+    includeArchived?: boolean;
     onEdit: (habit: THabitWithStatus) => void;
     onDelete: (habit: THabitWithStatus) => void;
     onStats: (habit: THabitWithStatus) => void;
+    onArchive: (habit: THabitWithStatus) => void;
+    onRestore: (habit: THabitWithStatus) => void;
     onCreateHabit: () => void;
+    onHideArchived: () => void;
     totalHabits: number;
 }
 
@@ -57,6 +67,35 @@ const EmptyAll = ({ onCreateHabit }: { onCreateHabit: () => void }) => (
     </motion.div>
 );
 
+const EmptyArchived = ({ onHideArchived }: { onHideArchived: () => void }) => (
+    <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="flex flex-col items-center justify-center gap-5 py-16 px-6 text-center"
+    >
+        <div className="w-20 h-20 rounded-2xl bg-warning/10 border border-warning/20 flex items-center justify-center">
+            <ArchiveIcon size={36} className="text-warning" />
+        </div>
+        <div className="space-y-1.5 max-w-xs">
+            <h3 className="text-lg font-bold text-foreground">
+                No archived habits
+            </h3>
+            <p className="text-sm text-foreground-500 leading-relaxed">
+                You haven't archived any habits yet. Archive a habit to remove
+                it from your daily view without deleting it.
+            </p>
+        </div>
+        <Button
+            variant="flat"
+            onPress={onHideArchived}
+            className="font-semibold"
+        >
+            Back to my habits
+        </Button>
+    </motion.div>
+);
+
 const EmptyFiltered = ({ tab }: { tab: "COMPLETED" | "INCOMPLETE" }) => (
     <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -91,35 +130,57 @@ export const HabitsList = ({
     date,
     streaks,
     tab,
+    includeArchived = false,
     onEdit,
     onDelete,
     onStats,
+    onArchive,
+    onRestore,
     onCreateHabit,
+    onHideArchived,
     totalHabits,
 }: IHabitsListProps) => {
-    if (totalHabits === 0) {
-        return <EmptyAll onCreateHabit={onCreateHabit} />;
-    }
+    if (includeArchived) {
+        if (data.length === 0) {
+            return <EmptyArchived onHideArchived={onHideArchived} />;
+        }
+    } else {
+        if (totalHabits === 0) {
+            return <EmptyAll onCreateHabit={onCreateHabit} />;
+        }
 
-    if (data.length === 0) {
-        return <EmptyFiltered tab={tab as "COMPLETED" | "INCOMPLETE"} />;
+        if (data.length === 0) {
+            return <EmptyFiltered tab={tab as "COMPLETED" | "INCOMPLETE"} />;
+        }
     }
 
     return (
         <motion.div className="flex flex-col gap-2.5" initial={false}>
-            <AnimatePresence mode="popLayout" initial={false}>
-                {data.map((habit, index) => (
-                    <HabitItem
-                        key={habit.id}
-                        data={habit}
-                        date={date}
-                        index={index}
-                        currentStreak={streaks[habit.id] ?? 0}
-                        onEdit={onEdit}
-                        onDelete={onDelete}
-                        onStats={onStats}
-                    />
-                ))}
+            <AnimatePresence mode="sync" initial={false}>
+                {includeArchived
+                    ? data.map((habit) => (
+                          <ArchivedHabitItem
+                              key={habit.id}
+                              data={habit}
+                              onEdit={onEdit}
+                              onDelete={onDelete}
+                              onStats={onStats}
+                              onRestore={onRestore}
+                          />
+                      ))
+                    : data.map((habit) => (
+                          <HabitItem
+                              key={habit.id}
+                              data={habit}
+                              date={date}
+                              includeArchived={false}
+                              currentStreak={streaks[habit.id] ?? 0}
+                              onEdit={onEdit}
+                              onDelete={onDelete}
+                              onStats={onStats}
+                              onArchive={onArchive}
+                          />
+                      ))}
             </AnimatePresence>
         </motion.div>
     );

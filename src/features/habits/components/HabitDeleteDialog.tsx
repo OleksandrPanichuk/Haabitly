@@ -36,7 +36,7 @@ export const HabitDeleteDialog = ({
             <ModalContent>
                 <ModalHeader className="flex flex-col gap-1">
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-danger/10 flex-shrink-0">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-danger/10 shrink-0">
                             <AlertTriangleIcon
                                 size={20}
                                 className="text-danger"

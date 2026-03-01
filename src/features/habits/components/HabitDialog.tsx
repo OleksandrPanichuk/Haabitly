@@ -11,6 +11,7 @@ import {
     Select,
     SelectItem,
     Textarea,
+    Tooltip,
 } from "@heroui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef } from "react";
@@ -27,6 +28,7 @@ import {
     DEFAULT_COLOR,
     FREQUENCY_TYPES,
     FREQUENCY_UNITS,
+    HABIT_CATEGORIES,
 } from "../constants";
 
 function getDefaultValues(habit?: THabitWithStatus | null): THabitFormValues {
@@ -35,6 +37,9 @@ function getDefaultValues(habit?: THabitWithStatus | null): THabitFormValues {
             name: habit.name,
             description: habit.description ?? "",
             color: habit.color,
+            icon: habit.icon ?? undefined,
+            category:
+                (habit.category as THabitFormValues["category"]) ?? "other",
             frequencyType: habit.frequencyType,
             frequencyDaysOfWeek: habit.frequencyDaysOfWeek ?? [],
             frequencyInterval: habit.frequencyInterval ?? undefined,
@@ -45,6 +50,8 @@ function getDefaultValues(habit?: THabitWithStatus | null): THabitFormValues {
         name: "",
         description: "",
         color: DEFAULT_COLOR,
+        icon: undefined,
+        category: "other",
         frequencyType: "daily",
         frequencyDaysOfWeek: [],
         frequencyInterval: undefined,
@@ -90,6 +97,9 @@ export const HabitDialog = ({
     const frequencyType = watch("frequencyType");
     const selectedColor = watch("color") ?? DEFAULT_COLOR;
     const selectedDays = watch("frequencyDaysOfWeek") ?? [];
+    const selectedCategory = watch("category") ?? "other";
+
+    const CATEGORY_ICONS = HABIT_CATEGORIES.map((c) => c.icon);
 
     const toggleDay = (day: number) => {
         const next = selectedDays.includes(day)
@@ -109,15 +119,57 @@ export const HabitDialog = ({
                     </ModalHeader>
 
                     <ModalBody className="gap-4">
-                        <Input
-                            label="Name"
-                            labelPlacement="outside"
-                            placeholder="e.g. Morning run"
-                            isRequired
-                            isInvalid={!!errors.name}
-                            errorMessage={errors.name?.message}
-                            {...register("name")}
-                        />
+                        <div className="flex gap-3 items-start">
+                            {/* Emoji icon picker */}
+                            <div className="flex flex-col gap-1.5 shrink-0">
+                                <span className="text-sm font-medium opacity-0 select-none">
+                                    Icon
+                                </span>
+                                <Controller
+                                    control={control}
+                                    name="icon"
+                                    render={({ field }) => (
+                                        <div className="relative group">
+                                            <button
+                                                type="button"
+                                                className="w-10.5 h-10.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 flex items-center justify-center text-xl transition-colors"
+                                                title="Choose icon"
+                                            >
+                                                {field.value ?? "✨"}
+                                            </button>
+                                            <div className="absolute top-full left-0 mt-1.5 z-50 hidden group-focus-within:flex flex-wrap gap-1 p-2 rounded-xl border border-white/15 bg-content1 shadow-xl w-44">
+                                                {CATEGORY_ICONS.map((emoji) => (
+                                                    <button
+                                                        key={emoji}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            field.onChange(
+                                                                emoji,
+                                                            )
+                                                        }
+                                                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-base transition-colors"
+                                                    >
+                                                        {emoji}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                />
+                            </div>
+
+                            <Input
+                                label="Name"
+                                labelPlacement="outside"
+                                placeholder="e.g. Morning run"
+                                isRequired
+                                isInvalid={!!errors.name}
+                                errorMessage={errors.name?.message}
+                                className="flex-1"
+                                {...register("name")}
+                            />
+                        </div>
+
                         <Textarea
                             label="Description"
                             labelPlacement="outside"
@@ -126,6 +178,58 @@ export const HabitDialog = ({
                             errorMessage={errors.description?.message}
                             {...register("description")}
                         />
+
+                        {/* Category */}
+                        <div className="flex flex-col gap-2">
+                            <span className="text-sm font-medium">
+                                Category
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                                {HABIT_CATEGORIES.map((cat) => {
+                                    const isSelected =
+                                        selectedCategory === cat.value;
+                                    return (
+                                        <Tooltip
+                                            key={cat.value}
+                                            content={cat.label}
+                                            placement="top"
+                                            delay={300}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setValue(
+                                                        "category",
+                                                        cat.value as THabitFormValues["category"],
+                                                        {
+                                                            shouldValidate: true,
+                                                        },
+                                                    )
+                                                }
+                                                className={[
+                                                    "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all duration-150",
+                                                    isSelected
+                                                        ? "border-transparent scale-105"
+                                                        : "border-white/10 hover:border-white/20 text-foreground-500",
+                                                ].join(" ")}
+                                                style={
+                                                    isSelected
+                                                        ? {
+                                                              backgroundColor: `${cat.color}22`,
+                                                              color: cat.color,
+                                                              borderColor: `${cat.color}44`,
+                                                          }
+                                                        : {}
+                                                }
+                                            >
+                                                <span>{cat.icon}</span>
+                                                <span>{cat.label}</span>
+                                            </button>
+                                        </Tooltip>
+                                    );
+                                })}
+                            </div>
+                        </div>
                         <div className="flex flex-col gap-2">
                             <span className="text-sm font-medium">Color</span>
                             <div className="flex flex-wrap gap-2 items-center">

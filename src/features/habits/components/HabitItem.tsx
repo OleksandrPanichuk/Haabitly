@@ -4,6 +4,8 @@ import { Button, Chip, Tooltip } from "@heroui/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
+    ArchiveIcon,
+    ArchiveRestoreIcon,
     BarChart2Icon,
     FlameIcon,
     NotebookPenIcon,
@@ -12,6 +14,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { HABIT_CATEGORIES } from "@/features/habits/constants";
 import { useTRPC } from "@/trpc/client";
 import type { THabitWithStatus } from "@/types";
 import { NoteDialog } from "./NoteDialog";
@@ -19,11 +22,12 @@ import { NoteDialog } from "./NoteDialog";
 interface IHabitItemProps {
     data: THabitWithStatus;
     date: Date;
+    includeArchived?: boolean;
     onEdit: (habit: THabitWithStatus) => void;
     onDelete: (habit: THabitWithStatus) => void;
     onStats: (habit: THabitWithStatus) => void;
+    onArchive?: (habit: THabitWithStatus) => void;
     currentStreak?: number;
-    index?: number;
 }
 
 function getFrequencyBadge(habit: THabitWithStatus): string {
@@ -48,11 +52,12 @@ function getFrequencyBadge(habit: THabitWithStatus): string {
 export const HabitItem = ({
     data,
     date,
+    includeArchived = false,
     onEdit,
     onDelete,
     onStats,
+    onArchive,
     currentStreak = 0,
-    index = 0,
 }: IHabitItemProps) => {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
@@ -60,10 +65,17 @@ export const HabitItem = ({
 
     const [noteOpen, setNoteOpen] = useState(false);
 
+    const categoryMeta = HABIT_CATEGORIES.find(
+        (c) => c.value === data.category,
+    );
+
     const { mutate: toggle, isPending: isToggling } = useMutation(
         trpc.completions.toggle.mutationOptions({
             onMutate: async () => {
-                const key = trpc.habits.list.queryKey({ date });
+                const key = trpc.habits.list.queryKey({
+                    date,
+                    includeArchived,
+                });
                 await queryClient.cancelQueries({ queryKey: key });
                 const prev = queryClient.getQueryData(key);
 
@@ -88,7 +100,10 @@ export const HabitItem = ({
                 return { prev };
             },
             onError: (_err, _vars, ctx) => {
-                const key = trpc.habits.list.queryKey({ date });
+                const key = trpc.habits.list.queryKey({
+                    date,
+                    includeArchived,
+                });
                 if (ctx?.prev) queryClient.setQueryData(key, ctx.prev);
             },
             onSettled: () => {
@@ -111,7 +126,10 @@ export const HabitItem = ({
     const { mutate: updateNote, isPending: isUpdatingNote } = useMutation(
         trpc.completions.updateNote.mutationOptions({
             onMutate: async ({ note }) => {
-                const key = trpc.habits.list.queryKey({ date });
+                const key = trpc.habits.list.queryKey({
+                    date,
+                    includeArchived,
+                });
                 await queryClient.cancelQueries({ queryKey: key });
                 const prev = queryClient.getQueryData(key);
 
@@ -128,7 +146,10 @@ export const HabitItem = ({
                 return { prev };
             },
             onError: (_err, _vars, ctx) => {
-                const key = trpc.habits.list.queryKey({ date });
+                const key = trpc.habits.list.queryKey({
+                    date,
+                    includeArchived,
+                });
                 if (ctx?.prev) queryClient.setQueryData(key, ctx.prev);
                 toast.error("Failed to save note.");
             },
@@ -166,12 +187,7 @@ export const HabitItem = ({
                 isLoading={isUpdatingNote}
             />
 
-            <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2, delay: index * 0.04 }}
-                layout
+            <div
                 className={[
                     "group relative flex items-start gap-4 rounded-2xl border px-4 py-3.5 transition-all duration-200",
                     "bg-white/5 backdrop-blur-sm",
@@ -246,6 +262,13 @@ export const HabitItem = ({
 
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
+                        {/* Emoji icon */}
+                        {data.icon && (
+                            <span className="text-base leading-none select-none">
+                                {data.icon}
+                            </span>
+                        )}
+
                         <span
                             className={[
                                 "text-sm font-semibold transition-all duration-200",
@@ -282,6 +305,20 @@ export const HabitItem = ({
                         {data.description && (
                             <span className="text-xs text-foreground-400 truncate max-w-50">
                                 {data.description}
+                            </span>
+                        )}
+
+                        {/* Category badge */}
+                        {categoryMeta && categoryMeta.value !== "other" && (
+                            <span
+                                className="inline-flex items-center gap-1 text-xs rounded-full px-2 py-0.5 font-medium"
+                                style={{
+                                    backgroundColor: `${categoryMeta.color}18`,
+                                    color: categoryMeta.color,
+                                }}
+                            >
+                                {categoryMeta.icon}
+                                {categoryMeta.label}
                             </span>
                         )}
 
@@ -364,6 +401,33 @@ export const HabitItem = ({
                         </Button>
                     </Tooltip>
 
+                    {onArchive && (
+                        <Tooltip
+                            content={data.archivedAt ? "Restore" : "Archive"}
+                            placement="top"
+                            delay={400}
+                        >
+                            <Button
+                                isIconOnly
+                                variant="light"
+                                size="sm"
+                                onPress={() => onArchive(data)}
+                                className={[
+                                    "min-w-7 w-7 h-7",
+                                    data.archivedAt
+                                        ? "text-warning hover:text-foreground"
+                                        : "text-foreground-400 hover:text-warning",
+                                ].join(" ")}
+                            >
+                                {data.archivedAt ? (
+                                    <ArchiveRestoreIcon size={14} />
+                                ) : (
+                                    <ArchiveIcon size={14} />
+                                )}
+                            </Button>
+                        </Tooltip>
+                    )}
+
                     <Tooltip content="Delete" placement="top" delay={400}>
                         <Button
                             isIconOnly
@@ -386,7 +450,7 @@ export const HabitItem = ({
                         }}
                     />
                 )}
-            </motion.div>
+            </div>
         </>
     );
 };
